@@ -1,2 +1,2 @@
 # Stock-Analyser
-Stock Analyser is a simple web application which provides information on polish stocks
+Stock Analyser is a simple web application which provides information on polish stocks.
