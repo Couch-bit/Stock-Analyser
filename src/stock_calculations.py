@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pandas_ta as ta
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -40,6 +41,8 @@ def prepare_data_for_display(df: pd.DataFrame,
 
     df = df.copy()
     df = df.last(filter_string)
+    # the index should be date not datetime
+    # this is more readable
     df.index = df.index.date
 
     return df
@@ -96,7 +99,9 @@ def visualize_stock_prices(df: pd.DataFrame, filter_string: str) -> go.Figure:
         ), row=2, col=1
     )
 
+    # Update y-axis fot oscillator plot
     fig.update_yaxes(range=[-10, 110], row=2, col=1)
+    # Add helper line for oscillator plot
     fig.add_hline(y=0, col=1, row=2, line_color="white", line_width=2)
     fig.add_hline(y=100, col=1, row=2, line_color="white", line_width=2)
     fig.add_hline(y=20, col=1, row=2, line_color="red", line_width=1)
