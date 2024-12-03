@@ -2,31 +2,56 @@ import numpy as np
 import pandas as pd
 import pandas_ta as ta
 import plotly.graph_objects as go
-import streamlit as st
 
+from global_settings import (
+    TRADE_DAYS_IN_YEAR,
+    TRADE_DAYS_IN_MONTH,
+    TRADE_DAYS_IN_WEEK,
+    OSCILLATOR_LONG,
+    OSCILLATOR_SHORT,
+    OSCILLATOR_SMOOTH
+)
 from plotly.subplots import make_subplots
 
 
 def _preprocess_data(df: pd.DataFrame, filter_string: str) -> pd.DataFrame:
     """Calculates the stochastic oscilator, filters the data,
     adds these columns to the dataframe
-    and makes sure all columns are lower case"""
-
-    # define stochastic oscillator
+    and makes sure all columns are lower case
+    """
+    # defines stochastic oscillator
     df = pd.concat(
-        [df, df.ta.stoch(high='high', low='low', k=14, d=3)], axis=1
+        [
+            df, 
+            df.ta.stoch(
+                high='high',
+                low='low',
+                k=OSCILLATOR_LONG,
+                d=OSCILLATOR_SHORT,
+                smooth_k=OSCILLATOR_SMOOTH,
+            )
+        ], axis=1
     )
-    # define moving average
-    df['close_weekly_average'] = df['close'].rolling(5).mean()
+
+    # defines moving average
+    df['close_weekly_average'] = (
+        df['close'].rolling(TRADE_DAYS_IN_WEEK).mean()
+    )
+    df['close_monthly_average'] = (
+        df['close'].rolling(TRADE_DAYS_IN_MONTH).mean()
+    )
+
+    # filters dataframe
     df = df.last(filter_string)
-    df.columns = [x.lower() for x in df.columns]
+
+    # fix column naming (stoch method creates weird names)
+    df.columns = [col.lower() for col in df.columns]
+
     return df
 
 
-@st.cache_data(show_spinner=False)
 def get_stock_returns(df: pd.DataFrame) -> pd.DataFrame:
     """Calculates both simple and log daily returns"""
-
     df = df.copy()
     df['daily return'] = df['close'].diff() / df['close'].shift(1)
     df['log daily return'] = np.log(df['daily return'] + 1)
@@ -34,11 +59,43 @@ def get_stock_returns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner=False)
-def prepare_data_for_display(df: pd.DataFrame,
-                             filter_string: str) -> pd.DataFrame:
-    """Parses datetime as data and filters data for display"""
+def summarise_stock(
+    df: pd.DataFrame,
+    var_function: 'function',
+    es_function: 'function',
+) -> pd.DataFrame:
+    """Given display ready dataframe summarise it.
+    VaR and ES are calculated on log returns using provided functions
+    """
+    # calculates summary metrics
+    return_over_time = (
+        (np.prod(df['daily return'] + 1)**(TRADE_DAYS_IN_YEAR / len(df))) - 1
+    )
+    annualized_volatility = (
+        np.std(df['log daily return']) * np.sqrt(TRADE_DAYS_IN_YEAR)
+    )
+    value_at_risk = var_function(df['log daily return'])
+    expected_shortfall = es_function(df['log daily return'])
 
+    # creates dataframe from metrics
+    result_df = pd.DataFrame(
+        data={'': [
+            return_over_time,
+            annualized_volatility, 
+            value_at_risk, 
+            expected_shortfall,
+        ]},
+        index = ['Return', 'Volatility', 'VaR', 'ES']
+    )
+
+    return result_df
+
+
+def prepare_data_for_display(
+    df: pd.DataFrame,
+    filter_string: str,
+) -> pd.DataFrame:
+    """Parses datetime as data and filters data for display"""
     df = df.copy()
     df = df.last(filter_string)
     # the index should be date not datetime
@@ -48,17 +105,21 @@ def prepare_data_for_display(df: pd.DataFrame,
     return df
 
 
-@st.cache_data(show_spinner=False)
 def visualize_stock_prices(df: pd.DataFrame, filter_string: str) -> go.Figure:
-    """Creates a plot stock price history and an oscillator plot from
-    a given pandas dataframe for the previous months"""
-
+    """Creates a plot of stock price history with volume
+    and an oscillator plot from a given pandas dataframe
+    for the previous months
+    """
     df = _preprocess_data(df, filter_string)
-    fig = make_subplots(rows=2, cols=1,
-                        subplot_titles=('Prices', 'Oscillator'))
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        subplot_titles=('Price History', 'Oscillator'),
+        specs=[[{'secondary_y': True}], [{}]],
+    )
 
-    # create candlestick plot
-    fig.append_trace(
+    # creates candlestick plot
+    fig.add_trace(
         go.Candlestick(
             x=df.index,
             open=df['open'],
@@ -67,53 +128,99 @@ def visualize_stock_prices(df: pd.DataFrame, filter_string: str) -> go.Figure:
             close=df['close'],
             increasing_line_color='green',
             decreasing_line_color='red',
-            showlegend=False
-        ), row=1, col=1
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
     )
-    # add lineplot of daily prices
-    fig.append_trace(
+
+    # adds lineplot of weekly price average
+    fig.add_trace(
         go.Scatter(
             x=df.index,
             y=df['close_weekly_average'],
-            line=dict(color='orange', width=1),
-            name='close 5D moving average',
-        ), row=1, col=1
+            line=dict(color='lightblue', width=1),
+            name=f'close {TRADE_DAYS_IN_WEEK}D moving average',
+        ),
+        row=1, 
+        col=1,
     )
 
-    # add fast stochastic oscillator
-    fig.append_trace(
+    # adds lineplot of monthly price average
+    fig.add_trace(
         go.Scatter(
             x=df.index,
-            y=df['stochk_14_3_3'],
+            y=df['close_monthly_average'],
+            line=dict(color='orange', width=1),
+            name=f'close {TRADE_DAYS_IN_MONTH}D moving average',
+        ), 
+        row=1, 
+        col=1,
+    )
+
+    # adds barplot of volume
+    fig.add_trace(
+        go.Bar(
+            x=df.index,
+            y=df['volume'],
+            marker=dict(color='grey'),
+            name=f'Volume',
+            opacity=0.5,
+            showlegend=False,
+        ),
+        secondary_y=True,
+        row=1, 
+        col=1,
+    )
+
+    # adds fast stochastic oscillator
+    oscillator_col_fast = (
+        f'stochk_{OSCILLATOR_LONG}_{OSCILLATOR_SHORT}_{OSCILLATOR_SMOOTH}'
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df[oscillator_col_fast],
             line=dict(color='lightblue', width=2),
             name='fast',
-        ), row=2, col=1
+        ),
+        row=2, 
+        col=1,
     )
-    # add slow stochastic oscillator
-    fig.append_trace(
+
+    # adds slow stochastic oscillator
+    oscillator_col_slow = (
+        f'stochd_{OSCILLATOR_LONG}_{OSCILLATOR_SHORT}_{OSCILLATOR_SMOOTH}'
+    )
+    fig.add_trace(
         go.Scatter(
             x=df.index,
-            y=df['stochd_14_3_3'],
+            y=df[oscillator_col_slow],
             line=dict(color='orange', width=2),
-            name='slow'
-        ), row=2, col=1
+            name='slow',
+        ),
+        row=2, 
+        col=1,
     )
 
-    # Update y-axis fot oscillator plot
+    # updates y-axis fot oscillator plot
     fig.update_yaxes(range=[-10, 110], row=2, col=1)
-    # Add helper line for oscillator plot
-    fig.add_hline(y=0, col=1, row=2, line_color="white", line_width=2)
-    fig.add_hline(y=100, col=1, row=2, line_color="white", line_width=2)
-    fig.add_hline(y=20, col=1, row=2, line_color="red", line_width=1)
-    fig.add_hline(y=80, col=1, row=2, line_color="green", line_width=1)
-    fig.add_hrect(y0=0, y1=20, col=1, row=2, line_width=0,
-                  fillcolor="red", opacity=0.2)
-    fig.add_hrect(y0=80, y1=100, col=1, row=2, line_width=0,
-                  fillcolor="green", opacity=0.2)
 
+    # adds helper lines for oscillator plot
+    fig.add_hline(y=0, col=1, row=2, line_color='white', line_width=2)
+    fig.add_hline(y=100, col=1, row=2, line_color='white', line_width=2)
+    fig.add_hline(y=20, col=1, row=2, line_color='red', line_width=1)
+    fig.add_hline(y=80, col=1, row=2, line_color='green', line_width=1)
+
+    # adds colored rectangles for critical areas
+    fig.add_hrect(y0=0, y1=20, col=1, row=2, line_width=0,
+                  fillcolor='red', opacity=0.2)
+    fig.add_hrect(y0=80, y1=100, col=1, row=2, line_width=0,
+                  fillcolor='green', opacity=0.2)
+
+    # configures layout
     layout = go.Layout(
         plot_bgcolor='#111111',
-        # Font Families
         font_family='Times New Roman',
         font_color='white',
         font_size=20,
@@ -121,7 +228,9 @@ def visualize_stock_prices(df: pd.DataFrame, filter_string: str) -> go.Figure:
             rangeslider=dict(
                 visible=False
             )
-        )
+        ),
+        yaxis=dict(title='Price'),
+        yaxis2=dict(title='Volume'),
     )
     fig.update_layout(layout)
 

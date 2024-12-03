@@ -9,30 +9,37 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 
-@st.cache_data(show_spinner='Getting stock name')
+def format_ticker(ticker: str) -> str:
+    """Formats given ticker so it's friendly to stooq.pl"""
+    return ticker.strip().replace(' ', '.').lower()
+
+
+@st.cache_data(show_spinner='Getting stock name', max_entries=10)
 def get_stock_name(ticker: str) -> str:
+    """Gets the name of the stock given by the ticker"""
     try:
+        # configures selenium driver
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("disable-gpu")
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('disable-gpu')
         driver = webdriver.Chrome(options=chrome_options)
         driver.get(f'https://stooq.pl/q/?s={ticker}')
 
-        # accept cookies
+        # accepts cookies
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'fc-cta-consent'))
         ).click()
 
-        # wait until the page is loaded
+        # waits until the page is loaded
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, 'f18'))
         )
 
-        # get page source
+        # gets page source
         html = driver.page_source
         soup = BeautifulSoup(html, 'html.parser')
 
-        # extract stock name
+        # extracts stock name
         ticker_upper = f'({ticker.upper()})'
         result = ''
         for tag in soup.find_all('font', id='f18'):
@@ -41,23 +48,29 @@ def get_stock_name(ticker: str) -> str:
     finally:
         driver.quit()
     
-    if result != '':
-        return result
-    else:
+    if result == '':
         # something went wrong
         raise Exception()
+      
+    return result
+        
 
-
-@st.cache_data(show_spinner='Downloading data')
+@st.cache_data(show_spinner='Downloading data', max_entries=10)
 def get_stock_data(ticker: str) -> pd.DataFrame:
-    """This function takes a ticker as an argument and returns 
+    """Takes a ticker as an argument and returns 
     a dataframe containing stock data gathered from stooq.pl
     """
-
-    df = pd.read_csv(f'https://stooq.pl/q/d/l/?s={ticker}' + '&i=d', index_col=0, parse_dates=[0])
+    # tries to get data for ticker
+    df = pd.read_csv(
+        f'https://stooq.pl/q/d/l/?s={ticker}' + '&i=d',
+        index_col=0, 
+        parse_dates=[0]
+    )
     if len(df) == 0:
         raise FileNotFoundError('No data for this ticker')
     
+    # if successful fixes naming for the pandas dataframe
     df.columns = ['open', 'high', 'low', 'close', 'volume']
     df.index.name = None
+
     return df
