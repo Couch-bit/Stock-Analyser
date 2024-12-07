@@ -50,7 +50,7 @@ def get_stock_name(ticker: str) -> str:
     
     if result == '':
         # something went wrong
-        raise Exception()
+        raise Exception('Something went wrong')
       
     return result
         
