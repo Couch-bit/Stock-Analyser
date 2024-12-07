@@ -26,6 +26,7 @@ def _preprocess_data(df: pd.DataFrame, filter_string: str) -> pd.DataFrame:
             df.ta.stoch(
                 high='high',
                 low='low',
+                close='close',
                 k=OSCILLATOR_LONG,
                 d=OSCILLATOR_SHORT,
                 smooth_k=OSCILLATOR_SMOOTH,
@@ -65,17 +66,17 @@ def summarise_stock(
     es_function: 'function',
 ) -> pd.DataFrame:
     """Given display ready dataframe summarise it.
-    VaR and ES are calculated on log returns using provided functions
+    VaR and ES are calculated on daily returns using provided functions
     """
     # calculates summary metrics
     return_over_time = (
         (np.prod(df['daily return'] + 1)**(TRADE_DAYS_IN_YEAR / len(df))) - 1
     )
     annualized_volatility = (
-        np.std(df['log daily return']) * np.sqrt(TRADE_DAYS_IN_YEAR)
+        np.std(df['log daily return'], ddof=1) * np.sqrt(TRADE_DAYS_IN_YEAR)
     )
-    value_at_risk = var_function(df['log daily return'])
-    expected_shortfall = es_function(df['log daily return'])
+    value_at_risk = var_function(df['daily return'])
+    expected_shortfall = es_function(df['daily return'])
 
     # creates dataframe from metrics
     result_df = pd.DataFrame(
