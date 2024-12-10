@@ -4,12 +4,12 @@ import stock_scraping
 import streamlit as st
 
 
-# general page layout
+# configures general page layout
 st.set_page_config(layout='wide')
 st.title('_:blue[Stock] Dashboard_')
 settings, result = st.columns([0.2, 0.8])
 
-# make sure 'data_ready' is defined is session_state
+# makes sure 'data_ready' is defined is session_state
 if 'data_ready' not in st.session_state:
     st.session_state['data_ready'] = False
 
@@ -48,16 +48,16 @@ with settings:
         # don't show anything if last data load failed
         st.session_state['data_ready'] = False
 
-        # format sticker according to stooq.pl standards
+        # formats sticker according to stooq.pl standards
         formatted_ticker = stock_scraping.format_ticker(ticker_str)
         
         try:
-            # try to get data, if successful update session state
+            # tries to get data, if successful updates session state
             st.session_state['df'] = stock_calculations.get_stock_returns(
                 stock_scraping.get_stock_data(formatted_ticker)
             )
 
-            # get the name of the stock, if successful update session state
+            # gets the name of the stock, if successful updates session state
             st.session_state['name'] = (
                 stock_scraping.get_stock_name(formatted_ticker)
             )
@@ -67,34 +67,34 @@ with settings:
         except FileNotFoundError as e:
             st.write(str(e))
 
-            # clear caches for the current ticker since an error occurred
+            # cleasr caches for the current ticker since an error occurred
             stock_scraping.get_stock_data.clear(formatted_ticker)
             stock_scraping.get_stock_name.clear(formatted_ticker)
         except Exception:
             st.write('Unexpected error occurred')
 
-            # clear caches for the current ticker since an error occurred
+            # clears caches for the current ticker since an error occurred
             stock_scraping.get_stock_data.clear(formatted_ticker)
             stock_scraping.get_stock_name.clear(formatted_ticker)  
 
 with result:
     if st.session_state['data_ready']:
-        # set header as the name of the stock
+        # sets header as the name of the stock
         st.header(st.session_state['name'])
         
         data_tab, chart_tab = st.tabs(['🗂️ Data', '📈 Plots'])
         with data_tab:
-            # get dataframe to be displayed
+            # gets DataFrame to be displayed
             df_display = stock_calculations.prepare_data_for_display(
                 st.session_state['df'],
                 st.session_state['months_filter']
             )
 
-            # display a preview of the data
+            # displays a preview of the data
             st.subheader('Raw Data')
             st.write(df_display.tail(row_num))
 
-            # display data summary
+            # displays data summary
             st.subheader('Summary')
             st.write(
                 stock_calculations.summarise_stock(
@@ -105,7 +105,7 @@ with result:
             )
 
         with chart_tab:
-            # display a candlestick plot along with an oscillator plot
+            # displays a candlestick plot along with an oscillator plot
             fig = stock_calculations.visualize_stock_prices(
                 st.session_state['df'],
                 st.session_state['months_filter']

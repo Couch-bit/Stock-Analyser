@@ -58,7 +58,7 @@ def get_stock_name(ticker: str) -> str:
 @st.cache_data(show_spinner='Downloading data', max_entries=10)
 def get_stock_data(ticker: str) -> pd.DataFrame:
     """Takes a ticker as an argument and returns 
-    a dataframe containing stock data gathered from stooq.pl
+    a DataFrame containing stock data gathered from stooq.pl
     """
     # tries to get data for ticker
     df = pd.read_csv(
@@ -69,7 +69,7 @@ def get_stock_data(ticker: str) -> pd.DataFrame:
     if len(df) == 0:
         raise FileNotFoundError('No data for this ticker')
     
-    # if successful fixes naming for the pandas dataframe
+    # if successful fixes naming for the pandas DataFrame
     df.columns = ['open', 'high', 'low', 'close', 'volume']
     df.index.name = None
 

@@ -16,7 +16,7 @@ from plotly.subplots import make_subplots
 
 def _preprocess_data(df: pd.DataFrame, filter_string: str) -> pd.DataFrame:
     """Calculates the stochastic oscilator, filters the data,
-    adds these columns to the dataframe
+    adds these columns to the DataFrame
     and makes sure all columns are lower case
     """
     # defines stochastic oscillator
@@ -42,10 +42,10 @@ def _preprocess_data(df: pd.DataFrame, filter_string: str) -> pd.DataFrame:
         df['close'].rolling(TRADE_DAYS_IN_MONTH).mean()
     )
 
-    # filters dataframe
+    # filters DataFrame
     df = df.last(filter_string)
 
-    # fix column naming (stoch method creates weird names)
+    # fixes column naming (stoch method creates weird names)
     df.columns = [col.lower() for col in df.columns]
 
     return df
@@ -65,7 +65,7 @@ def summarise_stock(
     var_function: 'function',
     es_function: 'function',
 ) -> pd.DataFrame:
-    """Given display ready dataframe summarise it.
+    """Given display ready DataFrame summarises it.
     VaR and ES are calculated on daily returns using provided functions
     """
     # calculates summary metrics
@@ -78,7 +78,7 @@ def summarise_stock(
     value_at_risk = var_function(df['daily return'])
     expected_shortfall = es_function(df['daily return'])
 
-    # creates dataframe from metrics
+    # creates DataFrame from metrics
     result_df = pd.DataFrame(
         data={'': [
             return_over_time,
@@ -96,7 +96,7 @@ def prepare_data_for_display(
     df: pd.DataFrame,
     filter_string: str,
 ) -> pd.DataFrame:
-    """Parses datetime as data and filters data for display"""
+    """Parses datetime as date and filters data for display"""
     df = df.copy()
     df = df.last(filter_string)
     # the index should be date not datetime
@@ -108,8 +108,8 @@ def prepare_data_for_display(
 
 def visualize_stock_prices(df: pd.DataFrame, filter_string: str) -> go.Figure:
     """Creates a plot of stock price history with volume
-    and an oscillator plot from a given pandas dataframe
-    for the previous months
+    and an oscillator plot from a given pandas DataFrame
+    for the previous months based on filter_string
     """
     df = _preprocess_data(df, filter_string)
     fig = make_subplots(
