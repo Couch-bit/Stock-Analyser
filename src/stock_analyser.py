@@ -6,7 +6,7 @@ import streamlit as st
 
 # configures general page layout
 st.set_page_config(layout='wide', page_title="Stock Analyser")
-st.title('_:blue[Stock] Analyser_')
+st.title('_:blue[Stock] Dashboard_')
 settings, result = st.columns([0.2, 0.8])
 
 # makes sure 'data_ready' is defined is session_state
