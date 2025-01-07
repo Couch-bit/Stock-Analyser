@@ -64,7 +64,7 @@ def get_stock_data(ticker: str) -> pd.DataFrame:
     df = pd.read_csv(
         f'https://stooq.pl/q/d/l/?s={ticker}' + '&i=d',
         index_col=0, 
-        parse_dates=[0]
+        parse_dates=[0],
     )
     if len(df) == 0:
         raise FileNotFoundError('No data for this ticker')

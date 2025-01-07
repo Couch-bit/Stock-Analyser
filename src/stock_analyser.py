@@ -19,7 +19,7 @@ with settings:
         'Number of months',
         min_value=1,
         max_value=36,
-        value=6
+        value=6,
     )
     st.session_state['months_filter'] = f'{month_num}M'
 
@@ -27,7 +27,7 @@ with settings:
     row_num = st.slider(
         'Number of rows',
         min_value=5,
-        max_value=20
+        max_value=20,
     )
 
     # allows for control of significance level
@@ -36,7 +36,7 @@ with settings:
         min_value=0.01, 
         max_value=0.1,
         step=0.01,
-        value=0.05
+        value=0.05,
     )   
 
     # data is gathered from stooq.pl
@@ -48,7 +48,7 @@ with settings:
         # don't show anything if last data load failed
         st.session_state['data_ready'] = False
 
-        # formats sticker according to stooq.pl standards
+        # formats ticker according to stooq.pl standards
         formatted_ticker = stock_scraping.format_ticker(ticker_str)
         
         try:
@@ -87,7 +87,7 @@ with result:
             # gets DataFrame to be displayed
             df_display = stock_calculations.prepare_data_for_display(
                 st.session_state['df'],
-                st.session_state['months_filter']
+                st.session_state['months_filter'],
             )
 
             # displays a preview of the data
@@ -100,7 +100,7 @@ with result:
                 stock_calculations.summarise_stock(
                     df_display,
                     lambda x: -np.quantile(x, alpha),
-                    lambda x: -np.mean(x[x <= np.quantile(x, alpha)])
+                    lambda x: -np.mean(x[x <= np.quantile(x, alpha)]),
                 )
             )
 
@@ -108,6 +108,6 @@ with result:
             # displays a candlestick plot along with an oscillator plot
             fig = stock_calculations.visualize_stock_prices(
                 st.session_state['df'],
-                st.session_state['months_filter']
+                st.session_state['months_filter'],
             )
             st.plotly_chart(fig)

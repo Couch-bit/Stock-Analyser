@@ -9,7 +9,7 @@ from global_settings import (
     TRADE_DAYS_IN_WEEK,
     OSCILLATOR_LONG,
     OSCILLATOR_SHORT,
-    OSCILLATOR_SMOOTH
+    OSCILLATOR_SMOOTH,
 )
 from plotly.subplots import make_subplots
 
